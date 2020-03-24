@@ -85,14 +85,106 @@ make && make install
 上图中描述了命令行的指令和指令参数  
 ### 6.1、nginx重载  
 在修改了nginx配置文件的时候使用`nginx -s reload`命令行可以实现平滑的配置文件重载  
-## 6.2、热部署  
-nginx的如数的步骤：  
+### 6.2、热部署  
+nginx的热部署步骤：  
 1、备份旧版本的二进制文件  
 2、将高版本的二进制文件拷贝到sbin目录中  
 3、发送USR2信号，使用新的二进制文件创建处理进程
 命令行是kill -USR2 #进程数#  
 4、发送WINCH信号关闭老的work进程
 命令行是kill -WINCH #进程数#  
+
+第一步：cp nginx nginx_old  
+![备份老的二进制文件](./pic/nginx_bak.png)  
+第二步：cp /download/nginx-1.14.2/objs/nginx nginx -f  
+![替换旧版本的二进制文件](./pic/nginx_replace.png)  
+第三步：发送USR2信号 kill -USR2 #进程id#  
+![发送信号前后的进程情况](./pic/nginx_process.png)  
+这个时候老的进程已经不再接受新的处理请求  
+第四步：发送WINCH信号，关闭老的work进程 
+![发送信号前后的进程情况](./pic/nginx_process_winch.png)  
+老版本的nginx的master进程会被保留但是不再监听端口，用来做版本回退   
+### 6.3、nginx的日志分割  
+重新开启一个新的日志记录文件的命令`nginx -s reopen`  
+下面是原来的日志文件：  
+![nginx日志文件](./pic/nginx_acess.png)  
+备份原来的文件：  
+![nginx日志文件](./pic/nginx_acess_bak.png)  
+重新开一个日志文件  
+![nginx日志文件](./pic/nginx_acess_new.png)   
+日志切分的处理一般是使用bash脚本来处理，定时的去备份日志文件，同时开启新的日志记录文件，除了使用`nginx -s reopen`的方式去处理，还可以使用发送USR1信号的方式去处理  
+
+### 额外说明【cron的安装和使用】  
+安装：apt-get install cron
+启动：service cron start
+重启：service cron restart
+停止：service cron stop
+检查状态：service cron status
+查询cron可用的命令：service cron
+检查Cronta工具是否安装：crontab -l  
+
+## 7、搭建静态资源服务器  
+
+### 7.1、最简单的静态资源
+在nginx安装目录的同级位置放上对应的静态资源文件：
+![资源文件目录](./pic/static_source.png)  
+对应的在nginx.conf文件中配置目录：  
+![静态资源配置](./pic/static_conf.png) 
+
+### 7.2、使用gzip对传输文件进行压缩  
+文件传输的时候在nginx中可以适当的设置gzip压缩来减小传输值的大小，没有设置gzip的时候文件传输如下  
+![没有压缩](./pic/no_gzip.png)   
+设置gzip压缩  
+![设置压缩](./pic/gzip_conf.png)  
+设置压缩之后的传输  
+![存在压缩](./pic/gzip.png)   
+返回响应的头中会有新的`content_encoding`参数  
+![content_encoding](./pic/content_encoding.png) 
+
+### 7.3、以目录的方式提供静态资源文件访问  
+可以使用autoindex模块实现对目录后缀加上`/`时访问资源文件的文件目录  
+对应的模块说明地址是http://nginx.org/en/docs/http/ngx_http_autoindex_module.html  
+配置文件的设置方式  
+![autoindex设置](./pic/autoindex.png)  
+得到的实际效果：  
+![autoindex实际效果](./pic/audoindex_ex.png)  
+
+### 7.4、设置传输速度限制  
+服务器的带宽资源是有限的，在大量高并发的处理情况下，可以通过对特定资源的访问速率进项限制，比如对大文件访问速率限制，以是的频繁访问的业务线有更多的带宽支持  
+这个可以通过内置变量来设置  
+http://nginx.org/en/docs/http/ngx_http_core_module.html#variables  
+很多模块都有自己的内置变量，在每个模块说明页面最下面的`Embedded Variables`链接中可以得到对应的描述   
+没有设置之前的传输时间  
+![no_limit的效果](./pic/no_limit.png)  
+下面是设置方法  
+![limit设置](./pic/limit.png) 
+设置之后效果  
+![limit的实际效果](./pic/limit_show.png) 
+
+### 7.5、使用合适的日志格式记录日志  
+首先可以通过`log_format`指令来设置日志的格式并设置一个名字，设置名字的目的是用来区分不同格式的日志  
+![log_format指令](./pic/log_format.png)  
+log_format指令对应的后面的设置都是内置变量  
+`$remote_addr`表示的是远程的ip  
+`$time_local`表示的是请求时间
+server中设置日志的存储位置以及使用的格式  
+![log](./pic/log.png)  
+实际的存储效果   
+实际的文件  
+![logfile](./pic/logfile.png) 
+![logdata](./pic/logdata.png) 
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

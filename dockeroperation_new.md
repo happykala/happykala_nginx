@@ -55,5 +55,7 @@ dokcer stop #container_id#
 基于镜像创建容器并指定端口映射
 
 
+docker run -i -t -p 8088:80 happykala/build_env:port   /bin/bash
+
 
 
